@@ -8,8 +8,7 @@
         :root { --blue: #003366; --gold: #ffcc00; --bg: #e5e5e5; }
         body { font-family: sans-serif; background: var(--bg); margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; }
         
-        /* Login Screen */
-        #loginOverlay { position: fixed; top:0; left:0; width:100%; height:100%; background:var(--blue); z-index:1000; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; }
+        #loginOverlay { position: fixed; top:0; left:0; width:100%; height:100%; background:var(--blue); z-index:1000; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; text-align: center; padding: 20px; }
         
         .header { background: var(--blue); color: white; padding: 20px; border-radius: 8px; text-align: center; width: 100%; max-width: 800px; border-bottom: 5px solid var(--gold); box-sizing: border-box; }
         .progress-box { background: #333; height: 20px; border-radius: 10px; margin: 15px 0; border: 1px solid #fff; overflow: hidden; }
@@ -19,26 +18,30 @@
         .square { background: white; aspect-ratio: 1/1; border: 1px solid #bbb; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; border-radius: 5px; text-align: center; font-size: 0.8rem; padding: 5px; }
         .square.sold { background: #222; color: var(--gold); cursor: not-allowed; border: 1px solid black; }
         
-        #adminPanel { display: none; background: white; padding: 20px; border: 3px solid red; margin-top: 20px; border-radius: 8px; width: 100%; max-width: 800px; }
-        .admin-trigger { margin-top: 50px; opacity: 0.05; cursor: pointer; font-size: 0.7rem; }
-        button { padding: 12px; background: var(--blue); color: white; border: none; border-radius: 5px; cursor: pointer; width: 100%; font-weight: bold; }
-        input { padding: 10px; margin: 10px 0; width: 80%; border-radius: 5px; border: 1px solid #ccc; }
+        #adminPanel, #ledgerBox { display: none; background: white; padding: 20px; border: 3px solid red; margin-top: 20px; border-radius: 8px; width: 100%; max-width: 800px; box-sizing: border-box; }
+        .admin-trigger { margin-top: 50px; opacity: 0.05; cursor: pointer; font-size: 0.7rem; color: #999; }
+        button { padding: 12px; background: var(--blue); color: white; border: none; border-radius: 5px; cursor: pointer; width: 100%; font-weight: bold; margin-bottom: 10px; }
+        input { padding: 10px; margin: 10px 0; width: 90%; border-radius: 5px; border: 1px solid #ccc; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.8rem; }
+        th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
+        th { background-color: #f2f2f2; }
     </style>
 </head>
 <body>
 
 <div id="loginOverlay">
-    <h2>🔒 Men's Walk Pool</h2>
-    <p>Enter Access Code to Enter:</p>
+    <h2>🔔 The Strategic Replacement of the Melodious Bell</h2>
+    <p>Men's Walk Access Code Required:</p>
     <input type="text" id="sitePassInput" placeholder="Enter Code">
-    <button onclick="checkLogin()" style="width: 200px;">Enter Site</button>
+    <button onclick="checkLogin()" style="max-width: 250px;">Enter Betting Pool</button>
 </div>
 
 <div class="header">
     <h2 style="margin:0">THE STRATEGIC REPLACEMENT OF THE MELODIOUS BELL</h2>
     <p>Predict when the bell is misplaced. Benefits Hays Praise Emmaus.</p>
     <div class="progress-box"><div id="progress-bar"></div></div>
-    <div style="display:flex; justify-content: space-between;">
+    <div style="display:flex; justify-content: space-between; font-weight: bold;">
         <span>Goal: $<span id="dispGoal">1000</span></span>
         <span>Raised: $<span id="dispRaised">0</span></span>
     </div>
@@ -47,24 +50,33 @@
 <div class="grid" id="grid"></div>
 
 <div id="adminPanel">
-    <h3>Admin Settings</h3>
-    <p>Site Access Code: <input type="text" id="inPass" value="DECOLORES"></p>
-    <p>Payment Instructions: <input type="text" id="inPay" value="Please see the Treasurer with $20 cash/check."></p>
-    <p>Cost per Square ($): <input type="number" id="inCost" value="20"></p>
+    <h3>Admin Control Panel</h3>
+    <p>Player Access Code: <input type="text" id="inPass" value="DECOLORES"></p>
+    <p>Admin Password: <input type="text" id="inAdminPass" value="HAYSADMIN"></p>
+    <p>Payment Message: <input type="text" id="inPay" value="Please see the Treasurer with $20 cash or check."></p>
+    <p>Cost ($): <input type="number" id="inCost" value="20"></p>
     <p>Goal ($): <input type="number" id="inGoal" value="1000"></p>
-    <p>Days: <input type="text" id="inDays" value="Friday,Saturday,Sunday"></p>
+    <p>Days (Friday, Saturday, Sunday): <input type="text" id="inDays" value="Friday,Saturday,Sunday"></p>
     <p>Hours: <input type="number" id="inStart" value="8"> to <input type="number" id="inEnd" value="20"></p>
-    <button onclick="saveSettings()">Apply & Reset Grid</button>
+    <button onclick="saveSettings()" style="background: green;">Apply & Save Settings</button>
+    <button onclick="showLedger()" style="background: var(--blue);">View Bettor Ledger (Phone List)</button>
+    <button onclick="document.getElementById('adminPanel').style.display='none'" style="background: #666;">Close Admin</button>
 </div>
 
-<div class="admin-trigger" onclick="document.getElementById('adminPanel').style.display='block'">Admin Access</div>
+<div id="ledgerBox">
+    <h3>Bettor Ledger (Phone List)</h3>
+    <div id="ledgerContent"></div>
+    <button onclick="document.getElementById('ledgerBox').style.display='none'" style="background: #666; margin-top: 15px;">Close Ledger</button>
+</div>
+
+<div class="admin-trigger" onclick="tryAdminAccess()">Admin Access</div>
 
 <script>
-    const STORAGE_KEY = "hays_praise_bell_final_v3"; 
+    const STORAGE_KEY = "hays_praise_bell_secure_v5"; 
     const API_URL = `https://kvdb.io/AnV9v8p6T4p6T4p6T4p6T4/${STORAGE_KEY}`;
 
     let settings = JSON.parse(localStorage.getItem('bell_cfg')) || {
-        cost: 20, goal: 1000, days: "Friday,Saturday,Sunday", start: 8, end: 20, pass: "DECOLORES", pay: "Please see the Treasurer with $20 cash/check."
+        cost: 20, goal: 1000, days: "Friday,Saturday,Sunday", start: 8, end: 20, pass: "DECOLORES", adminPass: "HAYSADMIN", pay: "Please see the Treasurer with $20 cash/check."
     };
     let bets = {};
 
@@ -73,6 +85,15 @@
         if (input.toUpperCase() === settings.pass.toUpperCase()) {
             document.getElementById('loginOverlay').style.display = 'none';
         } else { alert("Incorrect Code!"); }
+    }
+
+    function tryAdminAccess() {
+        const check = prompt("Enter Admin Password:");
+        if (check === settings.adminPass) {
+            document.getElementById('adminPanel').style.display = 'block';
+        } else {
+            alert("Unauthorized!");
+        }
     }
 
     async function loadData() {
@@ -101,16 +122,16 @@
                 const sq = document.createElement('div');
                 sq.className = 'square' + (bets[id] ? ' sold' : '');
                 
-                // If sold, we only show the name on the square
-                const ownerName = bets[id] ? bets[id].split('|')[0] : 'OPEN';
-                sq.innerHTML = `<strong>${day.trim()}</strong>${timeStr}<br>${ownerName}`;
+                const displayLabel = bets[id] ? bets[id].split('|')[0] : 'OPEN';
+                sq.innerHTML = `<strong>${day.trim()}</strong>${timeStr}<br>${displayLabel}`;
                 
                 if (!bets[id]) {
                     sq.onclick = () => {
-                        const name = prompt("Your Name:");
-                        const phone = name ? prompt("Your Phone Number (For Admin only):") : null;
+                        const name = prompt("Enter your Name:");
+                        if (!name) return;
+                        const phone = prompt("Enter your Phone Number:");
                         if (name && phone) {
-                            alert(`Square Reserved! ${settings.pay}`);
+                            alert(`Success! ${settings.pay}`);
                             bets[id] = `${name} | ${phone}`;
                             saveData();
                         }
@@ -126,6 +147,18 @@
         document.getElementById('progress-bar').style.width = Math.min(((count * settings.cost) / settings.goal * 100), 100) + "%";
     }
 
+    function showLedger() {
+        const ledger = document.getElementById('ledgerContent');
+        let html = `<table><tr><th>Slot</th><th>Name</th><th>Phone</th></tr>`;
+        for (let id in bets) {
+            const parts = bets[id].split('|');
+            html += `<tr><td>${id}</td><td>${parts[0]}</td><td>${parts[1]}</td></tr>`;
+        }
+        html += `</table>`;
+        ledger.innerHTML = html;
+        document.getElementById('ledgerBox').style.display = 'block';
+    }
+
     function saveSettings() {
         settings = {
             cost: parseInt(document.getElementById('inCost').value),
@@ -134,15 +167,16 @@
             start: parseInt(document.getElementById('inStart').value),
             end: parseInt(document.getElementById('inEnd').value),
             pass: document.getElementById('inPass').value,
+            adminPass: document.getElementById('inAdminPass').value,
             pay: document.getElementById('inPay').value
         };
         localStorage.setItem('bell_cfg', JSON.stringify(settings));
-        bets = {};
         saveData();
         document.getElementById('adminPanel').style.display='none';
     }
 
     loadData();
+    setInterval(loadData, 20000);
 </script>
 </body>
 </html>
