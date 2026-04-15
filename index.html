@@ -29,11 +29,14 @@
         
         .selection-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; border-top: 3px solid var(--gold); padding: 15px; box-shadow: 0 -5px 15px rgba(0,0,0,0.2); display: none; justify-content: center; z-index: 1500; }
         
-        /* Fixed Scheduling Rows */
-        .day-config { border: 1px solid #ddd; padding: 15px; margin-bottom: 12px; border-radius: 8px; background: #fafafa; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; color: #333; }
-        .day-config label { font-size: 0.85rem; font-weight: bold; display: flex; align-items: center; gap: 5px; }
-        .day-config input.time-input { width: 65px !important; padding: 8px; text-align: center; }
-        .day-config input.day-name { width: 100px !important; }
+        /* IMPROVED SCHEDULING UI */
+        .day-config { border: 1px solid #ccc; padding: 15px; margin-bottom: 15px; border-radius: 10px; background: #fdfdfd; display: block; color: #333; position: relative; }
+        .day-row-main { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
+        .time-inputs { display: flex; gap: 15px; background: #eee; padding: 10px; border-radius: 5px; }
+        .time-group { display: flex; flex-direction: column; align-items: flex-start; }
+        .time-group label { font-size: 0.7rem; text-transform: uppercase; font-weight: bold; color: #666; margin-bottom: 2px; }
+        .time-group input { width: 70px !important; margin: 0; padding: 5px; text-align: center; border: 1px solid #aaa; }
+        .remove-btn { position: absolute; top: 10px; right: 10px; background: red; color: white; border-radius: 50%; width: 25px; height: 25px; border: none; cursor: pointer; padding: 0; font-size: 12px; line-height: 25px; text-align: center; }
         
         table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.75rem; }
         th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
@@ -90,9 +93,10 @@
     <h4>Schedule Configuration</h4>
     <div id="dayConfigs"></div>
     <button type="button" onclick="addDayConfig()" style="background: #555;">+ Add New Day</button>
-    <button type="button" onclick="saveAdminSettings()" style="background: green;">Apply & Save Settings to Cloud</button>
+    <hr>
+    <button type="button" onclick="saveAdminSettings()" style="background: green;">Apply & Save to Cloud</button>
     <button type="button" onclick="showLedger()" style="background: var(--blue);">View Donation Ledger</button>
-    <button type="button" onclick="resetEvent()" style="background: black;">RESET ALL DATA (Next Walk)</button>
+    <button type="button" onclick="resetEvent()" style="background: black;">RESET ALL DATA</button>
     <button type="button" onclick="document.getElementById('adminPanel').style.display='none'" style="background: #666;">Close</button>
 </div>
 
@@ -151,10 +155,21 @@
             const div = document.createElement('div');
             div.className = 'day-config';
             div.innerHTML = `
-                <label>Day: <input type="text" class="day-name" value="${s.day}" onchange="updateSched(${idx},'day',this.value)"></label>
-                <label>Start (24h): <input type="number" class="time-input" value="${s.start}" onchange="updateSched(${idx},'start',this.value)"></label>
-                <label>End (24h): <input type="number" class="time-input" value="${s.end}" onchange="updateSched(${idx},'end',this.value)"></label>
-                <button type="button" onclick="removeDay(${idx})" style="background:red; width:auto; padding:8px 12px; margin:0;">X</button>`;
+                <button type="button" class="remove-btn" onclick="removeDay(${idx})">✕</button>
+                <div class="day-row-main">
+                    <strong>Day Name:</strong>
+                    <input type="text" value="${s.day}" onchange="updateSched(${idx},'day',this.value)" style="width:120px; margin:0;">
+                </div>
+                <div class="time-inputs">
+                    <div class="time-group">
+                        <label>Start (24h)</label>
+                        <input type="number" value="${s.start}" onchange="updateSched(${idx},'start',this.value)">
+                    </div>
+                    <div class="time-group">
+                        <label>End (24h)</label>
+                        <input type="number" value="${s.end}" onchange="updateSched(${idx},'end',this.value)">
+                    </div>
+                </div>`;
             container.appendChild(div);
         });
     }
@@ -194,7 +209,7 @@
     }
 
     function openCheckout() {
-        document.getElementById('modalSummary').innerText = `Reserving ${selectedSquares.length} slots. Total donation: $${selectedSquares.length * globalState.settings.cost}.`;
+        document.getElementById('modalSummary').innerText = `Reserving ${selectedSquares.length} slots. Total: $${selectedSquares.length * globalState.settings.cost}.`;
         document.getElementById('checkoutModal').style.display = 'flex';
     }
 
@@ -205,11 +220,7 @@
         const phone = document.getElementById('custPhone').value.replace(/\D/g,'');
         const email = document.getElementById('custEmail').value.trim();
         if (name.length < 2 || phone.length !== 10 || !email.includes('@')) return alert("Please check your entries.");
-
-        selectedSquares.forEach(id => {
-            globalState.bets[id] = `${name}|${phone}|${email}`;
-        });
-
+        selectedSquares.forEach(id => { globalState.bets[id] = `${name}|${phone}|${email}`; });
         selectedSquares = [];
         syncCloud(true);
         closeCheckout();
@@ -248,7 +259,7 @@
         globalState.settings.goal = parseInt(document.getElementById('inGoal').value);
         syncCloud(true);
         document.getElementById('adminPanel').style.display = 'none';
-        alert("Settings Saved to Cloud!");
+        alert("Saved to Cloud!");
     }
 
     function showLedger() {
@@ -268,11 +279,7 @@
     }
 
     async function resetEvent() { 
-        if (confirm("🚨 CLEAR ALL DATA?\nThis will clear all donors and reset the grid for everyone.")) { 
-            globalState.bets = {}; 
-            await syncCloud(true); 
-            location.reload(); 
-        } 
+        if (confirm("🚨 CLEAR ALL DATA?")) { globalState.bets = {}; await syncCloud(true); location.reload(); } 
     }
 
     syncCloud();
