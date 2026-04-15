@@ -26,7 +26,7 @@
         table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.8rem; }
         th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
         th { background-color: #f2f2f2; }
-        .day-config { border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; border-radius: 5px; background: #fafafa; }
+        .day-config { border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; border-radius: 5px; background: #fafafa; display: flex; align-items: center; justify-content: space-between; gap: 5px; flex-wrap: wrap; }
     </style>
 </head>
 <body>
@@ -58,9 +58,9 @@
     <p>Cost ($): <input type="number" id="inCost" value="20"></p>
     <p>Goal ($): <input type="number" id="inGoal" value="1000"></p>
 
-    <h4>Schedule Configuration</h4>
+    <h4>Schedule Configuration (Varying Hours)</h4>
     <div id="dayConfigs"></div>
-    <button onclick="addDayConfig()" style="background: #555; font-size: 0.8rem;">+ Add Day</button>
+    <button onclick="addDayConfig()" style="background: #555; font-size: 0.8rem;">+ Add New Day</button>
     
     <button onclick="saveSettings()" style="background: green; margin-top: 10px;">Apply & Save Settings</button>
     <button onclick="showLedger()" style="background: var(--blue);">View Bettor Ledger (Tally Owed)</button>
@@ -77,11 +77,12 @@
 <div class="admin-trigger" onclick="tryAdminAccess()">Admin Access</div>
 
 <script>
-    const STORAGE_KEY = "hays_praise_bell_secure_v5"; 
+    const STORAGE_KEY = "hays_praise_bell_secure_v6"; 
     const API_URL = `https://kvdb.io/AnV9v8p6T4p6T4p6T4p6T4/${STORAGE_KEY}`;
 
-    // Default settings with flexible schedule
-    let settings = JSON.parse(localStorage.getItem('bell_cfg')) || {
+    // 1. Load settings and fix format if it's from the old version
+    let rawSettings = JSON.parse(localStorage.getItem('bell_cfg'));
+    let settings = rawSettings && Array.isArray(rawSettings.schedule) ? rawSettings : {
         cost: 20, goal: 1000, pass: "DECOLORES", adminPass: "HAYSADMIN", 
         pay: "Please see the Treasurer with $20 cash/check.",
         schedule: [
@@ -90,6 +91,7 @@
             { day: "Sunday", start: 8, end: 12 }
         ]
     };
+
     let bets = {};
 
     function checkLogin() {
@@ -115,6 +117,12 @@
 
     function openAdminPanel() {
         document.getElementById('adminPanel').style.display = 'block';
+        // Fill the fields with current settings
+        document.getElementById('inPass').value = settings.pass;
+        document.getElementById('inAdminPass').value = settings.adminPass;
+        document.getElementById('inPay').value = settings.pay;
+        document.getElementById('inCost').value = settings.cost;
+        document.getElementById('inGoal').value = settings.goal;
         renderAdminSchedule();
     }
 
@@ -125,9 +133,9 @@
             const div = document.createElement('div');
             div.className = 'day-config';
             div.innerHTML = `
-                Day: <input type="text" value="${s.day}" onchange="updateSched(${idx}, 'day', this.value)" style="width:70px"> 
-                Start (24h): <input type="number" value="${s.start}" onchange="updateSched(${idx}, 'start', this.value)" style="width:50px"> 
-                End (24h): <input type="number" value="${s.end}" onchange="updateSched(${idx}, 'end', this.value)" style="width:50px">
+                <span>Day: <input type="text" value="${s.day}" onchange="updateSched(${idx}, 'day', this.value)" style="width:80px"></span>
+                <span>Start: <input type="number" value="${s.start}" onchange="updateSched(${idx}, 'start', this.value)" style="width:45px">h</span>
+                <span>End: <input type="number" value="${s.end}" onchange="updateSched(${idx}, 'end', this.value)" style="width:45px">h</span>
                 <button onclick="removeDay(${idx})" style="width: auto; background: red; padding: 5px 10px; margin:0;">X</button>
             `;
             container.appendChild(div);
@@ -238,7 +246,7 @@
         settings.pay = document.getElementById('inPay').value;
         
         localStorage.setItem('bell_cfg', JSON.stringify(settings));
-        saveData();
+        saveData(); // This also updates the grid with new hours
         document.getElementById('adminPanel').style.display='none';
     }
 
