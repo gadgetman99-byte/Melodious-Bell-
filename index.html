@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Melodious Bell Betting Pool</title>
+    <title>The Melodious Bell Donation Pool</title>
     <style>
         :root { --blue: #003366; --gold: #ffcc00; --bg: #e5e5e5; --selected: #4a90e2; }
         body { font-family: sans-serif; background: var(--bg); margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; padding-bottom: 120px; }
@@ -42,24 +42,24 @@
     <h2>🔔 The Strategic Replacement of the Melodious Bell</h2>
     <p>Men's Walk Access Code Required:</p>
     <input type="text" id="sitePassInput" placeholder="Enter Code" style="max-width: 300px;">
-    <button onclick="checkLogin()" style="max-width: 300px;">Enter Betting Pool</button>
+    <button onclick="checkLogin()" style="max-width: 300px;">Enter Donation Pool</button>
 </div>
 
 <div id="checkoutModal">
     <div class="modal-content">
-        <h3 style="margin-top:0">Complete Reservation</h3>
+        <h3 style="margin-top:0">Confirm Donation Slots</h3>
         <p id="modalSummary" style="font-size: 0.9rem; color: #666;"></p>
         <input type="text" id="custName" placeholder="Full Name">
-        <input type="tel" id="custPhone" placeholder="Phone (10 digits, e.g. 5125551234)">
+        <input type="tel" id="custPhone" placeholder="Phone (10 digits)">
         <input type="email" id="custEmail" placeholder="Email Address">
-        <button onclick="validateAndSubmit()" style="background: green; margin-top: 10px;">Reserve & Pay Later</button>
+        <button onclick="validateAndSubmit()" style="background: green; margin-top: 10px;">Reserve & Donate</button>
         <button onclick="closeCheckout()" style="background: #999;">Cancel</button>
     </div>
 </div>
 
 <div class="header">
     <h2 style="margin:0">THE STRATEGIC REPLACEMENT OF THE MELODIOUS BELL</h2>
-    <p>Predict when the bell is misplaced. Benefits Hays Praise Emmaus.</p>
+    <p>Support the bell replacement project. Benefits Hays Praise Emmaus.</p>
     <div class="progress-box"><div id="progress-bar"></div></div>
     <div style="display:flex; justify-content: space-between; font-weight: bold;">
         <span>Goal: $<span id="dispGoal">1000</span></span>
@@ -72,7 +72,7 @@
 <div class="selection-bar" id="selectionBar">
     <div style="max-width: 500px; width: 100%; text-align: center;">
         <span id="selectCount" style="font-weight: bold; margin-bottom: 10px; display: block; color: #333;">Squares Selected: 0</span>
-        <button type="button" onclick="openCheckout()" style="background: green; margin: 0;">Checkout Selected Squares</button>
+        <button type="button" onclick="openCheckout()" style="background: green; margin: 0;">Checkout Selected Slots</button>
     </div>
 </div>
 
@@ -80,20 +80,20 @@
     <h3>Admin Control Panel</h3>
     <p>Player Access Code: <input type="text" id="inPass"></p>
     <p>Admin Password: <input type="text" id="inAdminPass"></p>
-    <p>Payment Message: <input type="text" id="inPay"></p>
-    <p>Cost ($): <input type="number" id="inCost"></p>
+    <p>Donation Message: <input type="text" id="inPay"></p>
+    <p>Cost Per Slot ($): <input type="number" id="inCost"></p>
     <p>Goal ($): <input type="number" id="inGoal"></p>
     <h4>Schedule Configuration</h4>
     <div id="dayConfigs"></div>
     <button type="button" onclick="addDayConfig()" style="background: #555;">+ Add New Day</button>
     <button type="button" onclick="saveSettings()" style="background: green;">Apply & Save Settings</button>
-    <button type="button" onclick="showLedger()" style="background: var(--blue);">View Tally Ledger</button>
+    <button type="button" onclick="showLedger()" style="background: var(--blue);">View Donation Ledger</button>
     <button type="button" onclick="resetEvent()" style="background: black;">RESET ALL DATA</button>
     <button type="button" onclick="document.getElementById('adminPanel').style.display='none'" style="background: #666;">Close</button>
 </div>
 
 <div id="ledgerBox">
-    <h3>Bettor Ledger</h3>
+    <h3>Donation Ledger</h3>
     <div id="ledgerContent"></div>
     <button onclick="document.getElementById('ledgerBox').style.display='none'" style="background: #666;">Close</button>
 </div>
@@ -101,7 +101,7 @@
 <div class="admin-trigger" onclick="tryAdminAccess()">Admin Access</div>
 
 <script>
-    const STORAGE_KEY = "bell_validated_v13"; 
+    const STORAGE_KEY = "bell_donation_v14"; 
     const API_URL = `https://kvdb.io/AnV9v8p6T4p6T4p6T4p6T4/${STORAGE_KEY}`;
 
     let selectedSquares = [];
@@ -176,12 +176,12 @@
     function updateUI() {
         renderGrid();
         const bar = document.getElementById('selectionBar');
-        document.getElementById('selectCount').innerText = `Squares Selected: ${selectedSquares.length} ($${selectedSquares.length * settings.cost})`;
+        document.getElementById('selectCount').innerText = `Slots Selected: ${selectedSquares.length} ($${selectedSquares.length * settings.cost} Donation)`;
         bar.style.display = selectedSquares.length > 0 ? 'flex' : 'none';
     }
 
     function openCheckout() {
-        document.getElementById('modalSummary').innerText = `You are reserving ${selectedSquares.length} squares for a total of $${selectedSquares.length * settings.cost}.`;
+        document.getElementById('modalSummary').innerText = `You are reserving ${selectedSquares.length} slots for a total donation of $${selectedSquares.length * settings.cost}.`;
         document.getElementById('checkoutModal').style.display = 'flex';
     }
 
@@ -189,12 +189,12 @@
 
     function validateAndSubmit() {
         const name = document.getElementById('custName').value.trim();
-        const phone = document.getElementById('custPhone').value.replace(/\D/g,''); // remove non-digits
+        const phone = document.getElementById('custPhone').value.replace(/\D/g,'');
         const email = document.getElementById('custEmail').value.trim();
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
         if (name.length < 2) return alert("Please enter a valid Name.");
-        if (phone.length !== 10) return alert("Please enter a 10-digit phone number (numbers only).");
+        if (phone.length !== 10) return alert("Please enter a 10-digit phone number.");
         if (!emailRegex.test(email)) return alert("Please enter a valid email address.");
 
         selectedSquares.forEach(id => {
@@ -205,7 +205,7 @@
         selectedSquares = [];
         saveData();
         closeCheckout();
-        alert(`Success! You reserved ${count} squares.\n\n${settings.pay}`);
+        alert(`Thank you! You reserved ${count} slots.\n\n${settings.pay}`);
         updateUI();
     }
 
@@ -220,7 +220,7 @@
                 const sq = document.createElement('div');
                 const isSel = selectedSquares.includes(id);
                 sq.className = 'square' + (bets[id] ? ' sold' : '') + (isSel ? ' selected' : '');
-                const label = bets[id] ? bets[id].split('|')[0] : (isSel ? 'SELECTED' : 'OPEN');
+                const label = bets[id] ? bets[id].split('|')[0] : (isSel ? 'SELECTED' : 'AVAILABLE');
                 sq.innerHTML = `<strong>${s.day}</strong>${timeStr}<br>${label}`;
                 sq.onclick = () => toggleSquare(id);
                 grid.appendChild(sq);
@@ -251,7 +251,7 @@
             if (!totals[name]) totals[name] = { phone: phone, email: email || "N/A", count: 0 };
             totals[name].count++;
         }
-        let html = `<table><tr><th>Name</th><th>Phone</th><th>Email</th><th>Squares</th><th>Total</th></tr>`;
+        let html = `<table><tr><th>Donor Name</th><th>Phone</th><th>Email</th><th>Slots</th><th>Total</th></tr>`;
         for (let p in totals) {
             html += `<tr><td>${p}</td><td>${totals[p].phone}</td><td>${totals[p].email}</td><td>${totals[p].count}</td><td>$${totals[p].count * settings.cost}</td></tr>`;
         }
