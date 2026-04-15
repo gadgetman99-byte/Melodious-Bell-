@@ -7,20 +7,33 @@
     <style>
         :root { --blue: #003366; --gold: #ffcc00; --bg: #e5e5e5; --selected: #4a90e2; }
         body { font-family: sans-serif; background: var(--bg); margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; padding-bottom: 120px; }
-        #loginOverlay { position: fixed; top:0; left:0; width:100%; height:100%; background:var(--blue); z-index:2000; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; text-align: center; padding: 20px; }
+        
+        /* Overlays */
+        #loginOverlay, #checkoutModal { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0, 51, 102, 0.95); z-index:2000; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; text-align: center; padding: 20px; box-sizing: border-box; }
+        #checkoutModal { display: none; background: rgba(0,0,0,0.85); }
+        .modal-content { background: white; color: #333; padding: 25px; border-radius: 12px; width: 100%; max-width: 400px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        
         .header { background: var(--blue); color: white; padding: 20px; border-radius: 8px; text-align: center; width: 100%; max-width: 800px; border-bottom: 5px solid var(--gold); box-sizing: border-box; }
         .progress-box { background: #333; height: 20px; border-radius: 10px; margin: 15px 0; border: 1px solid #fff; overflow: hidden; }
         #progress-bar { width: 0%; height: 100%; background: var(--gold); transition: 0.5s; }
+        
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; width: 100%; max-width: 900px; margin-top: 20px; }
         .square { background: white; aspect-ratio: 1/1; border: 1px solid #bbb; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; border-radius: 5px; text-align: center; font-size: 0.8rem; padding: 5px; transition: 0.2s; box-shadow: 2px 2px 5px rgba(0,0,0,0.1); }
         .square.sold { background: #222; color: var(--gold); cursor: not-allowed; border: 1px solid black; box-shadow: none; }
         .square.selected { background: var(--selected); color: white; border: 2px solid white; transform: scale(1.05); z-index: 5; }
-        #adminPanel, #ledgerBox { display: none; background: white; padding: 20px; border: 3px solid red; margin-top: 20px; border-radius: 8px; width: 100%; max-width: 800px; box-sizing: border-box; overflow-y: auto; max-height: 90vh; z-index: 2001; }
+        
+        #adminPanel, #ledgerBox { display: none; background: white; padding: 20px; border: 3px solid red; margin-top: 20px; border-radius: 8px; width: 100%; max-width: 800px; box-sizing: border-box; overflow-y: auto; max-height: 90vh; z-index: 1001; }
         .admin-trigger { margin-top: 50px; opacity: 0.1; cursor: pointer; font-size: 0.7rem; color: #999; }
+        
         button { padding: 12px; background: var(--blue); color: white; border: none; border-radius: 5px; cursor: pointer; width: 100%; font-weight: bold; margin-bottom: 10px; }
-        input { padding: 10px; margin: 10px 0; width: 90%; border-radius: 5px; border: 1px solid #ccc; }
+        input { padding: 10px; margin: 8px 0; width: 100%; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box; }
+        
         .selection-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; border-top: 3px solid var(--gold); padding: 15px; box-shadow: 0 -5px 15px rgba(0,0,0,0.2); display: none; justify-content: center; z-index: 1500; }
         .day-config { border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; border-radius: 5px; background: #fafafa; display: flex; align-items: center; justify-content: space-between; gap: 5px; flex-wrap: wrap; color: #333; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.75rem; }
+        th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
+        th { background-color: #f2f2f2; }
     </style>
 </head>
 <body>
@@ -28,8 +41,20 @@
 <div id="loginOverlay">
     <h2>🔔 The Strategic Replacement of the Melodious Bell</h2>
     <p>Men's Walk Access Code Required:</p>
-    <input type="text" id="sitePassInput" placeholder="Enter Code">
-    <button onclick="checkLogin()" style="max-width: 250px;">Enter Betting Pool</button>
+    <input type="text" id="sitePassInput" placeholder="Enter Code" style="max-width: 300px;">
+    <button onclick="checkLogin()" style="max-width: 300px;">Enter Betting Pool</button>
+</div>
+
+<div id="checkoutModal">
+    <div class="modal-content">
+        <h3 style="margin-top:0">Complete Reservation</h3>
+        <p id="modalSummary" style="font-size: 0.9rem; color: #666;"></p>
+        <input type="text" id="custName" placeholder="Full Name">
+        <input type="tel" id="custPhone" placeholder="Phone (10 digits, e.g. 5125551234)">
+        <input type="email" id="custEmail" placeholder="Email Address">
+        <button onclick="validateAndSubmit()" style="background: green; margin-top: 10px;">Reserve & Pay Later</button>
+        <button onclick="closeCheckout()" style="background: #999;">Cancel</button>
+    </div>
 </div>
 
 <div class="header">
@@ -47,7 +72,7 @@
 <div class="selection-bar" id="selectionBar">
     <div style="max-width: 500px; width: 100%; text-align: center;">
         <span id="selectCount" style="font-weight: bold; margin-bottom: 10px; display: block; color: #333;">Squares Selected: 0</span>
-        <button type="button" onclick="bulkPurchase()" style="background: green; margin: 0;">Confirm & Reserve Squares</button>
+        <button type="button" onclick="openCheckout()" style="background: green; margin: 0;">Checkout Selected Squares</button>
     </div>
 </div>
 
@@ -76,21 +101,15 @@
 <div class="admin-trigger" onclick="tryAdminAccess()">Admin Access</div>
 
 <script>
-    // New storage key to force a clean, error-free start
-    const STORAGE_KEY = "bell_final_stable_v12"; 
+    const STORAGE_KEY = "bell_validated_v13"; 
     const API_URL = `https://kvdb.io/AnV9v8p6T4p6T4p6T4p6T4/${STORAGE_KEY}`;
 
     let selectedSquares = [];
     let bets = {};
-    
     let settings = JSON.parse(localStorage.getItem('bell_cfg')) || {
         cost: 20, goal: 1000, pass: "DECOLORES", adminPass: "HAYSADMIN", 
         pay: "Please see the Treasurer with $20 cash/check.",
-        schedule: [
-            { day: "Friday", start: 8, end: 20 },
-            { day: "Saturday", start: 8, end: 20 },
-            { day: "Sunday", start: 8, end: 12 }
-        ]
+        schedule: [{ day: "Friday", start: 8, end: 20 }, { day: "Saturday", start: 8, end: 20 }, { day: "Sunday", start: 8, end: 12 }]
     };
 
     function checkLogin() {
@@ -105,9 +124,8 @@
 
     function tryAdminAccess() {
         const check = prompt("Enter Admin Password:");
-        if (check && check.toUpperCase() === settings.adminPass.toUpperCase()) {
-            openAdminPanel();
-        } else { alert("Unauthorized!"); }
+        if (check && check.toUpperCase() === settings.adminPass.toUpperCase()) openAdminPanel();
+        else alert("Unauthorized!");
     }
 
     function openAdminPanel() {
@@ -126,11 +144,7 @@
         settings.schedule.forEach((s, idx) => {
             const div = document.createElement('div');
             div.className = 'day-config';
-            div.innerHTML = `
-                Day: <input type="text" value="${s.day}" onchange="updateSched(${idx},'day',this.value)" style="width:70px">
-                Start: <input type="number" value="${s.start}" onchange="updateSched(${idx},'start',this.value)" style="width:40px">
-                End: <input type="number" value="${s.end}" onchange="updateSched(${idx},'end',this.value)" style="width:40px">
-                <button type="button" onclick="removeDay(${idx})" style="background:red; width:auto; padding:5px;">X</button>`;
+            div.innerHTML = `Day: <input type="text" value="${s.day}" onchange="updateSched(${idx},'day',this.value)" style="width:70px"> Start: <input type="number" value="${s.start}" onchange="updateSched(${idx},'start',this.value)" style="width:40px"> End: <input type="number" value="${s.end}" onchange="updateSched(${idx},'end',this.value)" style="width:40px"> <button type="button" onclick="removeDay(${idx})" style="background:red; width:auto; padding:5px;">X</button>`;
             container.appendChild(div);
         });
     }
@@ -142,55 +156,56 @@
     async function loadData() {
         try {
             const res = await fetch(API_URL);
-            // ONLY process if it's a 200 OK. Ignores 404s silently.
-            if (res.status === 200) { 
-                bets = await res.json(); 
-                renderGrid(); 
-            }
-        } catch (e) { /* Silent fail for clean console */ }
+            if (res.status === 200) { bets = await res.json(); renderGrid(); }
+        } catch (e) {}
     }
 
     async function saveData() {
-        try {
-            await fetch(API_URL, { method: 'POST', body: JSON.stringify(bets) });
-            renderGrid();
-        } catch (e) { alert("Save failed. Check connection."); }
+        await fetch(API_URL, { method: 'POST', body: JSON.stringify(bets) });
+        renderGrid();
     }
 
     function toggleSquare(id) {
         if (bets[id]) return;
         const idx = selectedSquares.indexOf(id);
-        if (idx > -1) { selectedSquares.splice(idx, 1); } 
-        else { selectedSquares.push(id); }
+        if (idx > -1) selectedSquares.splice(idx, 1);
+        else selectedSquares.push(id);
         updateUI();
     }
 
     function updateUI() {
         renderGrid();
         const bar = document.getElementById('selectionBar');
-        const countLabel = document.getElementById('selectCount');
-        if (selectedSquares.length > 0) {
-            bar.style.display = 'flex';
-            countLabel.innerText = `Squares Selected: ${selectedSquares.length} ($${selectedSquares.length * settings.cost})`;
-        } else {
-            bar.style.display = 'none';
-        }
+        document.getElementById('selectCount').innerText = `Squares Selected: ${selectedSquares.length} ($${selectedSquares.length * settings.cost})`;
+        bar.style.display = selectedSquares.length > 0 ? 'flex' : 'none';
     }
 
-    function bulkPurchase() {
-        const name = prompt("Enter your Name:");
-        if (!name) return;
-        const phone = prompt("Enter your Phone Number:");
-        if (!phone) return;
+    function openCheckout() {
+        document.getElementById('modalSummary').innerText = `You are reserving ${selectedSquares.length} squares for a total of $${selectedSquares.length * settings.cost}.`;
+        document.getElementById('checkoutModal').style.display = 'flex';
+    }
+
+    function closeCheckout() { document.getElementById('checkoutModal').style.display = 'none'; }
+
+    function validateAndSubmit() {
+        const name = document.getElementById('custName').value.trim();
+        const phone = document.getElementById('custPhone').value.replace(/\D/g,''); // remove non-digits
+        const email = document.getElementById('custEmail').value.trim();
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        if (name.length < 2) return alert("Please enter a valid Name.");
+        if (phone.length !== 10) return alert("Please enter a 10-digit phone number (numbers only).");
+        if (!emailRegex.test(email)) return alert("Please enter a valid email address.");
 
         selectedSquares.forEach(id => {
-            bets[id] = `${name.trim()} | ${phone.trim()}`;
+            bets[id] = `${name}|${phone}|${email}`;
         });
 
-        const tempSelected = [...selectedSquares];
+        const count = selectedSquares.length;
         selectedSquares = [];
         saveData();
-        alert(`Reserved ${tempSelected.length} squares! ${settings.pay}`);
+        closeCheckout();
+        alert(`Success! You reserved ${count} squares.\n\n${settings.pay}`);
         updateUI();
     }
 
@@ -203,9 +218,9 @@
                 const timeStr = h > 12 ? (h-12)+'PM' : (h==12?'12PM':h+'AM');
                 const id = `${s.day}-${h}`;
                 const sq = document.createElement('div');
-                const isSelected = selectedSquares.includes(id);
-                sq.className = 'square' + (bets[id] ? ' sold' : '') + (isSelected ? ' selected' : '');
-                const label = bets[id] ? bets[id].split('|')[0] : (isSelected ? 'SELECTED' : 'OPEN');
+                const isSel = selectedSquares.includes(id);
+                sq.className = 'square' + (bets[id] ? ' sold' : '') + (isSel ? ' selected' : '');
+                const label = bets[id] ? bets[id].split('|')[0] : (isSel ? 'SELECTED' : 'OPEN');
                 sq.innerHTML = `<strong>${s.day}</strong>${timeStr}<br>${label}`;
                 sq.onclick = () => toggleSquare(id);
                 grid.appendChild(sq);
@@ -232,20 +247,19 @@
         const ledger = document.getElementById('ledgerContent');
         let totals = {}; 
         for (let id in bets) {
-            const parts = bets[id].split('|');
-            const name = parts[0].trim();
-            if (!totals[name]) totals[name] = { phone: parts[1] || "N/A", count: 0 };
+            const [name, phone, email] = bets[id].split('|');
+            if (!totals[name]) totals[name] = { phone: phone, email: email || "N/A", count: 0 };
             totals[name].count++;
         }
-        let html = `<table><tr><th>Name</th><th>Phone</th><th>Squares</th><th>Total</th></tr>`;
+        let html = `<table><tr><th>Name</th><th>Phone</th><th>Email</th><th>Squares</th><th>Total</th></tr>`;
         for (let p in totals) {
-            html += `<tr><td>${p}</td><td>${totals[p].phone}</td><td>${totals[p].count}</td><td>$${totals[p].count * settings.cost}</td></tr>`;
+            html += `<tr><td>${p}</td><td>${totals[p].phone}</td><td>${totals[p].email}</td><td>${totals[p].count}</td><td>$${totals[p].count * settings.cost}</td></tr>`;
         }
         ledger.innerHTML = html + `</table>`;
         document.getElementById('ledgerBox').style.display = 'block';
     }
 
-    async function resetEvent() { if (confirm("Clear all squares?")) { bets = {}; await saveData(); location.reload(); } }
+    async function resetEvent() { if (confirm("Clear all data?")) { bets = {}; await saveData(); location.reload(); } }
 
     loadData();
     setInterval(loadData, 15000);
