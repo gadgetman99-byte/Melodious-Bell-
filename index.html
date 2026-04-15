@@ -18,7 +18,7 @@
         .square { background: white; aspect-ratio: 1/1; border: 1px solid #bbb; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; border-radius: 5px; text-align: center; font-size: 0.8rem; padding: 5px; }
         .square.sold { background: #222; color: var(--gold); cursor: not-allowed; border: 1px solid black; }
         
-        #adminPanel, #ledgerBox { display: none; background: white; padding: 20px; border: 3px solid red; margin-top: 20px; border-radius: 8px; width: 100%; max-width: 800px; box-sizing: border-box; }
+        #adminPanel, #ledgerBox { display: none; background: white; padding: 20px; border: 3px solid red; margin-top: 20px; border-radius: 8px; width: 100%; max-width: 800px; box-sizing: border-box; overflow-y: auto; max-height: 90vh; }
         .admin-trigger { margin-top: 50px; opacity: 0.1; cursor: pointer; font-size: 0.7rem; color: #999; }
         button { padding: 12px; background: var(--blue); color: white; border: none; border-radius: 5px; cursor: pointer; width: 100%; font-weight: bold; margin-bottom: 10px; }
         input { padding: 10px; margin: 10px 0; width: 90%; border-radius: 5px; border: 1px solid #ccc; }
@@ -26,6 +26,7 @@
         table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.8rem; }
         th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
         th { background-color: #f2f2f2; }
+        .day-config { border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; border-radius: 5px; background: #fafafa; }
     </style>
 </head>
 <body>
@@ -56,10 +57,12 @@
     <p>Payment Message: <input type="text" id="inPay" value="Please see the Treasurer with $20 cash or check."></p>
     <p>Cost ($): <input type="number" id="inCost" value="20"></p>
     <p>Goal ($): <input type="number" id="inGoal" value="1000"></p>
-    <p>Days (Friday, Saturday, Sunday): <input type="text" id="inDays" value="Friday,Saturday,Sunday"></p>
-    <p>Hours: <input type="number" id="inStart" value="8"> to <input type="number" id="inEnd" value="20"></p>
+
+    <h4>Schedule Configuration</h4>
+    <div id="dayConfigs"></div>
+    <button onclick="addDayConfig()" style="background: #555; font-size: 0.8rem;">+ Add Day</button>
     
-    <button onclick="saveSettings()" style="background: green;">Apply & Save Settings</button>
+    <button onclick="saveSettings()" style="background: green; margin-top: 10px;">Apply & Save Settings</button>
     <button onclick="showLedger()" style="background: var(--blue);">View Bettor Ledger (Tally Owed)</button>
     <button onclick="resetEvent()" style="background: black; color: white;">RESET SYSTEM FOR NEXT WALK</button>
     <button onclick="document.getElementById('adminPanel').style.display='none'" style="background: #666;">Close Admin</button>
@@ -74,23 +77,28 @@
 <div class="admin-trigger" onclick="tryAdminAccess()">Admin Access</div>
 
 <script>
-    // Cloud storage key for persistence across all users
     const STORAGE_KEY = "hays_praise_bell_secure_v5"; 
     const API_URL = `https://kvdb.io/AnV9v8p6T4p6T4p6T4p6T4/${STORAGE_KEY}`;
 
+    // Default settings with flexible schedule
     let settings = JSON.parse(localStorage.getItem('bell_cfg')) || {
-        cost: 20, goal: 1000, days: "Friday,Saturday,Sunday", start: 8, end: 20, pass: "DECOLORES", adminPass: "HAYSADMIN", pay: "Please see the Treasurer with $20 cash/check."
+        cost: 20, goal: 1000, pass: "DECOLORES", adminPass: "HAYSADMIN", 
+        pay: "Please see the Treasurer with $20 cash/check.",
+        schedule: [
+            { day: "Friday", start: 8, end: 20 },
+            { day: "Saturday", start: 8, end: 20 },
+            { day: "Sunday", start: 8, end: 12 }
+        ]
     };
     let bets = {};
 
-    // Handles both Player and Admin entry from the front screen
     function checkLogin() {
         const input = document.getElementById('sitePassInput').value.toUpperCase();
         if (input === settings.pass.toUpperCase()) {
             document.getElementById('loginOverlay').style.display = 'none';
         } else if (input === settings.adminPass.toUpperCase()) {
             document.getElementById('loginOverlay').style.display = 'none';
-            document.getElementById('adminPanel').style.display = 'block';
+            openAdminPanel();
         } else { 
             alert("Incorrect Code!"); 
         }
@@ -99,10 +107,45 @@
     function tryAdminAccess() {
         const check = prompt("Enter Admin Password:");
         if (check && check.toUpperCase() === settings.adminPass.toUpperCase()) {
-            document.getElementById('adminPanel').style.display = 'block';
+            openAdminPanel();
         } else {
             alert("Unauthorized!");
         }
+    }
+
+    function openAdminPanel() {
+        document.getElementById('adminPanel').style.display = 'block';
+        renderAdminSchedule();
+    }
+
+    function renderAdminSchedule() {
+        const container = document.getElementById('dayConfigs');
+        container.innerHTML = '';
+        settings.schedule.forEach((s, idx) => {
+            const div = document.createElement('div');
+            div.className = 'day-config';
+            div.innerHTML = `
+                Day: <input type="text" value="${s.day}" onchange="updateSched(${idx}, 'day', this.value)" style="width:70px"> 
+                Start (24h): <input type="number" value="${s.start}" onchange="updateSched(${idx}, 'start', this.value)" style="width:50px"> 
+                End (24h): <input type="number" value="${s.end}" onchange="updateSched(${idx}, 'end', this.value)" style="width:50px">
+                <button onclick="removeDay(${idx})" style="width: auto; background: red; padding: 5px 10px; margin:0;">X</button>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    function updateSched(idx, key, val) {
+        settings.schedule[idx][key] = key === 'day' ? val : parseInt(val);
+    }
+
+    function addDayConfig() {
+        settings.schedule.push({ day: "New Day", start: 8, end: 20 });
+        renderAdminSchedule();
+    }
+
+    function removeDay(idx) {
+        settings.schedule.splice(idx, 1);
+        renderAdminSchedule();
     }
 
     async function loadData() {
@@ -120,32 +163,31 @@
         try {
             await fetch(API_URL, { method: 'POST', body: JSON.stringify(bets) });
             renderGrid();
-        } catch (e) { alert("Error saving to cloud. Check internet connection."); }
+        } catch (e) { alert("Error saving to cloud."); }
     }
 
     async function resetEvent() {
-        if (confirm("🚨 WARNING: This will delete ALL bets and reset the system for the next event. Continue?")) {
+        if (confirm("🚨 WARNING: This will delete ALL bets for the next event. Continue?")) {
             bets = {};
             await saveData();
-            alert("System has been cleared.");
+            alert("System cleared.");
         }
     }
 
     function renderGrid() {
         const grid = document.getElementById('grid');
         grid.innerHTML = '';
-        const dayList = settings.days.split(',');
         let count = 0;
 
-        dayList.forEach(day => {
-            for (let h = settings.start; h <= settings.end; h++) {
+        settings.schedule.forEach(s => {
+            for (let h = s.start; h <= s.end; h++) {
                 const timeStr = h > 12 ? (h-12)+'PM' : (h==12?'12PM':h+'AM');
-                const id = `${day.trim()}-${h}`;
+                const id = `${s.day.trim()}-${h}`;
                 const sq = document.createElement('div');
                 sq.className = 'square' + (bets[id] ? ' sold' : '');
                 
                 const displayLabel = bets[id] ? bets[id].split('|')[0] : 'OPEN';
-                sq.innerHTML = `<strong>${day.trim()}</strong>${timeStr}<br>${displayLabel}`;
+                sq.innerHTML = `<strong>${s.day.trim()}</strong>${timeStr}<br>${displayLabel}`;
                 
                 if (!bets[id]) {
                     sq.onclick = () => {
@@ -172,26 +214,16 @@
     function showLedger() {
         const ledger = document.getElementById('ledgerContent');
         let totals = {}; 
-
         for (let id in bets) {
             const parts = bets[id].split('|');
             const name = parts[0].trim();
             const phone = parts[1] ? parts[1].trim() : "N/A";
-            
-            if (!totals[name]) {
-                totals[name] = { phone: phone, count: 0 };
-            }
+            if (!totals[name]) totals[name] = { phone: phone, count: 0 };
             totals[name].count++;
         }
-
-        let html = `<table><tr><th>Name</th><th>Phone</th><th>Squares Bought</th><th>Total Owed</th></tr>`;
+        let html = `<table><tr><th>Name</th><th>Phone</th><th>Squares</th><th>Total Owed</th></tr>`;
         for (let person in totals) {
-            html += `<tr>
-                <td>${person}</td>
-                <td>${totals[person].phone}</td>
-                <td>${totals[person].count}</td>
-                <td>$${totals[person].count * settings.cost}</td>
-            </tr>`;
+            html += `<tr><td>${person}</td><td>${totals[person].phone}</td><td>${totals[person].count}</td><td>$${totals[person].count * settings.cost}</td></tr>`;
         }
         html += `</table>`;
         ledger.innerHTML = html;
@@ -199,22 +231,17 @@
     }
 
     function saveSettings() {
-        settings = {
-            cost: parseInt(document.getElementById('inCost').value),
-            goal: parseInt(document.getElementById('inGoal').value),
-            days: document.getElementById('inDays').value,
-            start: parseInt(document.getElementById('inStart').value),
-            end: parseInt(document.getElementById('inEnd').value),
-            pass: document.getElementById('inPass').value,
-            adminPass: document.getElementById('inAdminPass').value,
-            pay: document.getElementById('inPay').value
-        };
+        settings.cost = parseInt(document.getElementById('inCost').value);
+        settings.goal = parseInt(document.getElementById('inGoal').value);
+        settings.pass = document.getElementById('inPass').value;
+        settings.adminPass = document.getElementById('inAdminPass').value;
+        settings.pay = document.getElementById('inPay').value;
+        
         localStorage.setItem('bell_cfg', JSON.stringify(settings));
         saveData();
         document.getElementById('adminPanel').style.display='none';
     }
 
-    // Load initial data and sync every 20 seconds
     loadData();
     setInterval(loadData, 20000);
 </script>
