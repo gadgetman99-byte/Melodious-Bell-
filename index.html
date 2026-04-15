@@ -6,20 +6,20 @@
     <title>The Melodious Bell Betting Pool</title>
     <style>
         :root { --blue: #003366; --gold: #ffcc00; --bg: #e5e5e5; --selected: #4a90e2; }
-        body { font-family: sans-serif; background: var(--bg); margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; padding-bottom: 100px; }
+        body { font-family: sans-serif; background: var(--bg); margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; padding-bottom: 120px; }
         #loginOverlay { position: fixed; top:0; left:0; width:100%; height:100%; background:var(--blue); z-index:2000; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; text-align: center; padding: 20px; }
         .header { background: var(--blue); color: white; padding: 20px; border-radius: 8px; text-align: center; width: 100%; max-width: 800px; border-bottom: 5px solid var(--gold); box-sizing: border-box; }
         .progress-box { background: #333; height: 20px; border-radius: 10px; margin: 15px 0; border: 1px solid #fff; overflow: hidden; }
         #progress-bar { width: 0%; height: 100%; background: var(--gold); transition: 0.5s; }
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; width: 100%; max-width: 900px; margin-top: 20px; }
-        .square { background: white; aspect-ratio: 1/1; border: 1px solid #bbb; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; border-radius: 5px; text-align: center; font-size: 0.8rem; padding: 5px; transition: 0.2s; }
-        .square.sold { background: #222; color: var(--gold); cursor: not-allowed; border: 1px solid black; }
-        .square.selected { background: var(--selected); color: white; border: 2px solid white; transform: scale(1.05); }
-        #adminPanel, #ledgerBox { display: none; background: white; padding: 20px; border: 3px solid red; margin-top: 20px; border-radius: 8px; width: 100%; max-width: 800px; box-sizing: border-box; overflow-y: auto; max-height: 90vh; z-index: 1001; }
+        .square { background: white; aspect-ratio: 1/1; border: 1px solid #bbb; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; border-radius: 5px; text-align: center; font-size: 0.8rem; padding: 5px; transition: 0.2s; box-shadow: 2px 2px 5px rgba(0,0,0,0.1); }
+        .square.sold { background: #222; color: var(--gold); cursor: not-allowed; border: 1px solid black; box-shadow: none; }
+        .square.selected { background: var(--selected); color: white; border: 2px solid white; transform: scale(1.05); z-index: 5; }
+        #adminPanel, #ledgerBox { display: none; background: white; padding: 20px; border: 3px solid red; margin-top: 20px; border-radius: 8px; width: 100%; max-width: 800px; box-sizing: border-box; overflow-y: auto; max-height: 90vh; z-index: 2001; }
         .admin-trigger { margin-top: 50px; opacity: 0.1; cursor: pointer; font-size: 0.7rem; color: #999; }
         button { padding: 12px; background: var(--blue); color: white; border: none; border-radius: 5px; cursor: pointer; width: 100%; font-weight: bold; margin-bottom: 10px; }
         input { padding: 10px; margin: 10px 0; width: 90%; border-radius: 5px; border: 1px solid #ccc; }
-        .selection-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; border-top: 3px solid var(--gold); padding: 15px; box-shadow: 0 -5px 15px rgba(0,0,0,0.2); display: none; justify-content: center; z-index: 1000; }
+        .selection-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; border-top: 3px solid var(--gold); padding: 15px; box-shadow: 0 -5px 15px rgba(0,0,0,0.2); display: none; justify-content: center; z-index: 1500; }
         .day-config { border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; border-radius: 5px; background: #fafafa; display: flex; align-items: center; justify-content: space-between; gap: 5px; flex-wrap: wrap; color: #333; }
     </style>
 </head>
@@ -46,8 +46,8 @@
 
 <div class="selection-bar" id="selectionBar">
     <div style="max-width: 500px; width: 100%; text-align: center;">
-        <span id="selectCount" style="font-weight: bold; margin-bottom: 10px; display: block;">Squares Selected: 0</span>
-        <button type="button" onclick="bulkPurchase()" style="background: green; margin: 0;">Confirm & Buy Selected Squares</button>
+        <span id="selectCount" style="font-weight: bold; margin-bottom: 10px; display: block; color: #333;">Squares Selected: 0</span>
+        <button type="button" onclick="bulkPurchase()" style="background: green; margin: 0;">Confirm & Reserve Squares</button>
     </div>
 </div>
 
@@ -76,16 +76,22 @@
 <div class="admin-trigger" onclick="tryAdminAccess()">Admin Access</div>
 
 <script>
-    const STORAGE_KEY = "hays_bell_multiselect_v11"; 
+    // New storage key to force a clean, error-free start
+    const STORAGE_KEY = "bell_final_stable_v12"; 
     const API_URL = `https://kvdb.io/AnV9v8p6T4p6T4p6T4p6T4/${STORAGE_KEY}`;
 
     let selectedSquares = [];
+    let bets = {};
+    
     let settings = JSON.parse(localStorage.getItem('bell_cfg')) || {
         cost: 20, goal: 1000, pass: "DECOLORES", adminPass: "HAYSADMIN", 
         pay: "Please see the Treasurer with $20 cash/check.",
-        schedule: [{ day: "Friday", start: 8, end: 20 }, { day: "Saturday", start: 8, end: 20 }, { day: "Sunday", start: 8, end: 12 }]
+        schedule: [
+            { day: "Friday", start: 8, end: 20 },
+            { day: "Saturday", start: 8, end: 20 },
+            { day: "Sunday", start: 8, end: 12 }
+        ]
     };
-    let bets = {};
 
     function checkLogin() {
         const input = document.getElementById('sitePassInput').value.toUpperCase();
@@ -136,23 +142,26 @@
     async function loadData() {
         try {
             const res = await fetch(API_URL);
-            if (res.ok) { bets = await res.json(); renderGrid(); }
-        } catch (e) { console.log("Sync..."); }
+            // ONLY process if it's a 200 OK. Ignores 404s silently.
+            if (res.status === 200) { 
+                bets = await res.json(); 
+                renderGrid(); 
+            }
+        } catch (e) { /* Silent fail for clean console */ }
     }
 
     async function saveData() {
-        await fetch(API_URL, { method: 'POST', body: JSON.stringify(bets) });
-        renderGrid();
+        try {
+            await fetch(API_URL, { method: 'POST', body: JSON.stringify(bets) });
+            renderGrid();
+        } catch (e) { alert("Save failed. Check connection."); }
     }
 
     function toggleSquare(id) {
         if (bets[id]) return;
         const idx = selectedSquares.indexOf(id);
-        if (idx > -1) {
-            selectedSquares.splice(idx, 1);
-        } else {
-            selectedSquares.push(id);
-        }
+        if (idx > -1) { selectedSquares.splice(idx, 1); } 
+        else { selectedSquares.push(id); }
         updateUI();
     }
 
@@ -178,9 +187,10 @@
             bets[id] = `${name.trim()} | ${phone.trim()}`;
         });
 
+        const tempSelected = [...selectedSquares];
         selectedSquares = [];
         saveData();
-        alert(`Successfully reserved! ${settings.pay}`);
+        alert(`Reserved ${tempSelected.length} squares! ${settings.pay}`);
         updateUI();
     }
 
@@ -235,7 +245,7 @@
         document.getElementById('ledgerBox').style.display = 'block';
     }
 
-    async function resetEvent() { if (confirm("Clear all data?")) { bets = {}; await saveData(); location.reload(); } }
+    async function resetEvent() { if (confirm("Clear all squares?")) { bets = {}; await saveData(); location.reload(); } }
 
     loadData();
     setInterval(loadData, 15000);
