@@ -19,7 +19,7 @@
         .square.sold { background: #222; color: var(--gold); cursor: not-allowed; border: 1px solid black; }
         
         #adminPanel, #ledgerBox { display: none; background: white; padding: 20px; border: 3px solid red; margin-top: 20px; border-radius: 8px; width: 100%; max-width: 800px; box-sizing: border-box; }
-        .admin-trigger { margin-top: 50px; opacity: 0.05; cursor: pointer; font-size: 0.7rem; color: #999; }
+        .admin-trigger { margin-top: 50px; opacity: 0.1; cursor: pointer; font-size: 0.7rem; color: #999; }
         button { padding: 12px; background: var(--blue); color: white; border: none; border-radius: 5px; cursor: pointer; width: 100%; font-weight: bold; margin-bottom: 10px; }
         input { padding: 10px; margin: 10px 0; width: 90%; border-radius: 5px; border: 1px solid #ccc; }
         
@@ -58,13 +58,15 @@
     <p>Goal ($): <input type="number" id="inGoal" value="1000"></p>
     <p>Days (Friday, Saturday, Sunday): <input type="text" id="inDays" value="Friday,Saturday,Sunday"></p>
     <p>Hours: <input type="number" id="inStart" value="8"> to <input type="number" id="inEnd" value="20"></p>
+    
     <button onclick="saveSettings()" style="background: green;">Apply & Save Settings</button>
-    <button onclick="showLedger()" style="background: var(--blue);">View Bettor Ledger (Phone List)</button>
+    <button onclick="showLedger()" style="background: var(--blue);">View Bettor Ledger (Tally Owed)</button>
+    <button onclick="resetEvent()" style="background: black; color: white;">RESET SYSTEM FOR NEXT WALK</button>
     <button onclick="document.getElementById('adminPanel').style.display='none'" style="background: #666;">Close Admin</button>
 </div>
 
 <div id="ledgerBox">
-    <h3>Bettor Ledger (Phone List)</h3>
+    <h3>Bettor Ledger (Payment Tally)</h3>
     <div id="ledgerContent"></div>
     <button onclick="document.getElementById('ledgerBox').style.display='none'" style="background: #666; margin-top: 15px;">Close Ledger</button>
 </div>
@@ -72,6 +74,7 @@
 <div class="admin-trigger" onclick="tryAdminAccess()">Admin Access</div>
 
 <script>
+    // Cloud storage key for persistence across all users
     const STORAGE_KEY = "hays_praise_bell_secure_v5"; 
     const API_URL = `https://kvdb.io/AnV9v8p6T4p6T4p6T4p6T4/${STORAGE_KEY}`;
 
@@ -80,16 +83,22 @@
     };
     let bets = {};
 
+    // Handles both Player and Admin entry from the front screen
     function checkLogin() {
-        const input = document.getElementById('sitePassInput').value;
-        if (input.toUpperCase() === settings.pass.toUpperCase()) {
+        const input = document.getElementById('sitePassInput').value.toUpperCase();
+        if (input === settings.pass.toUpperCase()) {
             document.getElementById('loginOverlay').style.display = 'none';
-        } else { alert("Incorrect Code!"); }
+        } else if (input === settings.adminPass.toUpperCase()) {
+            document.getElementById('loginOverlay').style.display = 'none';
+            document.getElementById('adminPanel').style.display = 'block';
+        } else { 
+            alert("Incorrect Code!"); 
+        }
     }
 
     function tryAdminAccess() {
         const check = prompt("Enter Admin Password:");
-        if (check === settings.adminPass) {
+        if (check && check.toUpperCase() === settings.adminPass.toUpperCase()) {
             document.getElementById('adminPanel').style.display = 'block';
         } else {
             alert("Unauthorized!");
@@ -99,14 +108,27 @@
     async function loadData() {
         try {
             const res = await fetch(API_URL);
-            if (res.ok) bets = await res.json();
-        } catch (e) { console.log("Init..."); }
-        renderGrid();
+            if (res.ok) {
+                const cloudData = await res.json();
+                bets = cloudData || {};
+                renderGrid();
+            }
+        } catch (e) { console.log("Initializing Cloud Data..."); }
     }
 
     async function saveData() {
-        await fetch(API_URL, { method: 'POST', body: JSON.stringify(bets) });
-        renderGrid();
+        try {
+            await fetch(API_URL, { method: 'POST', body: JSON.stringify(bets) });
+            renderGrid();
+        } catch (e) { alert("Error saving to cloud. Check internet connection."); }
+    }
+
+    async function resetEvent() {
+        if (confirm("🚨 WARNING: This will delete ALL bets and reset the system for the next event. Continue?")) {
+            bets = {};
+            await saveData();
+            alert("System has been cleared.");
+        }
     }
 
     function renderGrid() {
@@ -131,9 +153,9 @@
                         if (!name) return;
                         const phone = prompt("Enter your Phone Number:");
                         if (name && phone) {
-                            alert(`Success! ${settings.pay}`);
-                            bets[id] = `${name} | ${phone}`;
+                            bets[id] = `${name.trim()} | ${phone.trim()}`;
                             saveData();
+                            alert(`Success! ${settings.pay}`);
                         }
                     };
                 }
@@ -149,10 +171,27 @@
 
     function showLedger() {
         const ledger = document.getElementById('ledgerContent');
-        let html = `<table><tr><th>Slot</th><th>Name</th><th>Phone</th></tr>`;
+        let totals = {}; 
+
         for (let id in bets) {
             const parts = bets[id].split('|');
-            html += `<tr><td>${id}</td><td>${parts[0]}</td><td>${parts[1]}</td></tr>`;
+            const name = parts[0].trim();
+            const phone = parts[1] ? parts[1].trim() : "N/A";
+            
+            if (!totals[name]) {
+                totals[name] = { phone: phone, count: 0 };
+            }
+            totals[name].count++;
+        }
+
+        let html = `<table><tr><th>Name</th><th>Phone</th><th>Squares Bought</th><th>Total Owed</th></tr>`;
+        for (let person in totals) {
+            html += `<tr>
+                <td>${person}</td>
+                <td>${totals[person].phone}</td>
+                <td>${totals[person].count}</td>
+                <td>$${totals[person].count * settings.cost}</td>
+            </tr>`;
         }
         html += `</table>`;
         ledger.innerHTML = html;
@@ -175,6 +214,7 @@
         document.getElementById('adminPanel').style.display='none';
     }
 
+    // Load initial data and sync every 20 seconds
     loadData();
     setInterval(loadData, 20000);
 </script>
